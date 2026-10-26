@@ -5,11 +5,13 @@ import path from "node:path";
 import { Command } from "commander";
 
 import {
-  buildNotifyCommand,
   mergeClaudeHooks,
+  notifyHookSpecs,
+  relayHookSpecs,
   removeClidevHooks,
   type JsonRecord,
 } from "../utils/claude-hooks.js";
+import { DEFAULT_WAIT_SECONDS } from "./relay.js";
 import { CliError, isErrnoException } from "../utils/errors.js";
 import { box, hint, note, payload, setMachineOutput, success, warn } from "../utils/logger.js";
 import { expandHome, screenshotTimestamp } from "../utils/paths.js";
@@ -21,6 +23,7 @@ interface HooksOptions {
   dryRun?: boolean;
   backup?: boolean;
   command?: string;
+  notifyOnly?: boolean;
 }
 
 function claudeSettingsPath(): string {
@@ -97,7 +100,8 @@ function printIntegrationGuide(): void {
 export function createHooksCommand(): Command {
   return new Command("hooks")
     .description("Install lifecycle notification hooks into your AI CLI tools")
-    .option("--claude", "inject Stop + Notification hooks into ~/.claude/settings.json")
+    .option("--claude", "wire Claude Code into the clidev inbox (~/.claude/settings.json)")
+    .option("--notify-only", "only show a toast when Claude stops or waits; no replies")
     .option("--remove", "remove clidev hooks instead of installing them")
     .option("--dry-run", "print the resulting settings.json without writing it")
     .option("--no-backup", "skip the timestamped settings.json backup")
@@ -106,7 +110,8 @@ export function createHooksCommand(): Command {
       "after",
       `
 Examples:
-  $ clidev hooks --claude
+  $ clidev hooks --claude                  answer Claude from the inbox, by voice
+  $ clidev hooks --claude --notify-only    just a toast when it stops or waits
   $ clidev hooks --claude --dry-run        inspect the JSON first
   $ clidev hooks --claude --remove         undo, keeping your other hooks
   $ clidev hooks                           show wiring guides for other agents
@@ -117,10 +122,13 @@ Writes are atomic, idempotent, and never touch an invalid settings.json.`,
       setMachineOutput(options.dryRun === true);
       const bin = options.command?.trim() ?? "";
       const executable = bin.length > 0 ? bin : resolveCliInvocation();
-      const commands = {
-        stop: buildNotifyCommand(executable, "Claude Code", "Task finished"),
-        notification: buildNotifyCommand(executable, "Claude Code", "Waiting for your input"),
-      };
+      const specs =
+        options.notifyOnly === true
+          ? notifyHookSpecs(executable)
+          : relayHookSpecs(executable, {
+              Stop: DEFAULT_WAIT_SECONDS.Stop ?? 900,
+              PermissionRequest: DEFAULT_WAIT_SECONDS.PermissionRequest ?? 600,
+            });
 
       if (options.remove === true) {
         const settingsPath = claudeSettingsPath();
@@ -153,7 +161,7 @@ Writes are atomic, idempotent, and never touch an invalid settings.json.`,
 
       const settingsPath = claudeSettingsPath();
       const parsed = await readSettings(settingsPath);
-      const merged = mergeClaudeHooks(parsed, commands);
+      const merged = mergeClaudeHooks(parsed, specs);
 
       if (options.dryRun === true) {
         payload(JSON.stringify(merged.settings, null, 2));
@@ -164,14 +172,22 @@ Writes are atomic, idempotent, and never touch an invalid settings.json.`,
         backup: options.backup !== false,
       });
 
-      success("Claude Code hooks are wired up");
+      const replies = options.notifyOnly !== true;
+      success(replies ? "Claude Code now reports to the clidev inbox" : "Claude Code hooks are wired up");
       box("hooks installed", [
         ["file", settingsPath],
-        ["Stop", merged.added > 0 ? "added" : "updated in place"],
-        ["Notification", merged.added > 0 ? "added" : "updated in place"],
+        ["events", specs.map((spec) => spec.event).join(", ")],
+        ["changes", `${merged.added} added · ${merged.updated} updated · ${merged.removed} removed`],
         ["backup", backup ?? "none (new file)"],
         ["restart", "reopen the Claude Code session to reload settings.json"],
       ]);
+      if (replies) {
+        hint("open the inbox with `clidev inbox`; the hub starts by itself when Claude needs you");
+        hint(
+          `a hook waits ${Math.round((DEFAULT_WAIT_SECONDS.Stop ?? 900) / 60)} min for your reply, then Claude carries on as normal`,
+        );
+        return;
+      }
       printIntegrationGuide();
     });
 }

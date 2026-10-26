@@ -4,9 +4,11 @@ import { createBridgeCommand } from "./commands/bridge.js";
 import { createCleanCommand } from "./commands/clean.js";
 import { createCompanionCommand } from "./commands/companion.js";
 import { createHooksCommand } from "./commands/hooks.js";
+import { createHubCommand, createInboxCommand } from "./commands/hub.js";
 import { createNotifyCommand } from "./commands/notify.js";
 import { createPackCommand } from "./commands/pack.js";
 import { createPasteCommand } from "./commands/paste.js";
+import { createRelayCommand } from "./commands/relay.js";
 import { createWatchCommand } from "./commands/watch.js";
 import { CliError } from "./utils/errors.js";
 import { blank, fail, hint, isVerbose, printBanner, setVerbose, writeErr } from "./utils/logger.js";
@@ -14,15 +16,28 @@ import { VERSION } from "./version.js";
 
 export type CliInvocation = "clidev" | "clp";
 
-const SUBCOMMANDS = ["paste", "bridge", "companion", "watch", "notify", "hooks", "clean", "pack"] as const;
+const SUBCOMMANDS = [
+  "inbox",
+  "hub",
+  "relay",
+  "paste",
+  "bridge",
+  "companion",
+  "watch",
+  "notify",
+  "hooks",
+  "clean",
+  "pack",
+] as const;
 
 const EXAMPLES = `
 Examples:
+  $ clidev hooks --claude                answer Claude Code from one inbox, by voice
+  $ clidev inbox                         open the inbox (every agent that needs you)
   $ clp                                  screenshot -> save -> path on your clipboard
   $ clidev bridge                        keep screenshots pasteable as @paths (Windows preview)
   $ clidev companion install             start that bridge automatically when Windows starts
   $ clidev watch "npm run build"         get pinged when the build finishes
-  $ clidev hooks --claude                wire Stop + Notification hooks automatically
   $ npm run dev 2>&1 | clidev clean      strip ANSI, mask secrets, fold stack traces
   $ clidev pack "src/**/*.ts"            bundle context onto the clipboard
   $ clidev --help                        every command and flag
@@ -60,6 +75,9 @@ function buildProgram(invocation: CliInvocation): Command {
       if (thisCommand.opts().verbose === true) setVerbose(true);
     });
 
+  program.addCommand(createInboxCommand());
+  program.addCommand(createHubCommand());
+  program.addCommand(createRelayCommand());
   program.addCommand(createPasteCommand());
   program.addCommand(createBridgeCommand());
   program.addCommand(createCompanionCommand());

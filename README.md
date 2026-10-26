@@ -22,6 +22,7 @@ clipboard screenshot bridged
 
 | # | Command | What it fixes |
 |---|---------|---------------|
+| 0 | `clidev hooks --claude` · `clidev inbox` | Your agent finishes or asks for permission while you are in another window. You get a toast, answer by voice in one inbox, and the agent carries on. |
 | 1 | `clidev bridge` · `clidev paste` · `clp` | A Windows clipboard companion turns a screenshot into a saved PNG plus terminal-pasteable `@path`; `clp` remains the explicit cross-platform fallback. |
 | 2 | `clidev watch` · `clidev notify` | Long agent runs are silent. You come back to a finished build — or find it waiting on a permission prompt. |
 | 3 | `clidev hooks --claude` | Lifecycle events differ by agent. Claude Code has supported hooks; other agents use their documented adapters or the portable `watch` fallback. |
@@ -79,6 +80,40 @@ clidev --help
 > **Windows PowerShell note.** PowerShell ships a built-in alias `clp → Clear-ItemProperty` that shadows the npm shim. Use `clp.cmd` there, or free the name once with `Remove-Item Alias:clp`. `cmd.exe`, Windows Terminal (cmd profile) and bash are unaffected.
 
 ---
+
+## 0. `clidev inbox` — answer your agents by voice
+
+```bash
+clidev hooks --claude     # once: Claude Code now reports to the clidev hub
+clidev inbox              # open the inbox (the hub starts by itself)
+```
+
+Start Claude Code, hand it a task, and switch to something else. When it needs you:
+
+1. **Claude finishes** → a toast shows what it did. In the inbox, hold your Wispr Flow key, say what to do next, press `Ctrl+Enter`. Claude keeps working with your words as its next instruction.
+2. **Claude asks for permission** → the inbox shows the exact command. Press **Allow**, or say *"no, use npm run clean"* and press **Deny**: Claude reads your reason and adjusts.
+3. **Claude asks a question** (`AskUserQuestion`) → say the answer and send it.
+4. **You'd rather type in the terminal** → **Answer in terminal** / **Leave it stopped** hands control straight back.
+
+The inbox also lists every session (working, waiting, done) and keeps a small record: asks answered, median reply time, words replied.
+
+How it works: the hooks call `clidev relay claude <Event>`, which reports to a local hub on `127.0.0.1:7477` and waits for your reply (up to 15 min after Claude stops, 10 min on a permission prompt). If you don't answer in time, or anything fails, the hook prints nothing and Claude behaves exactly as it would without clidev.
+
+| Claude Code hook | What clidev does |
+|---|---|
+| `Stop` | waits for your reply, returns `{"decision":"block","reason":"<your words>"}` so Claude continues |
+| `PermissionRequest` | waits for Allow / Deny, returns the decision (and your reason) |
+| `UserPromptSubmit`, `Notification`, `SessionEnd` | keep the session list current |
+
+```bash
+clidev hooks --claude --notify-only   # just a toast, no replies (the old behaviour)
+clidev hooks --claude --remove        # undo
+clidev hub --stop                     # stop the background hub
+```
+
+Privacy: the hub listens on `127.0.0.1` only, every API call needs a random token stored in `~/.clidev/hub/token`, and requests with any other `Host` header are refused, so websites in your browser cannot reach it. Nothing leaves your machine.
+
+Other agents: OpenCode and Antigravity CLI adapters are next; until then use `clidev watch`.
 
 ## 1. `clidev bridge` — install-once clipboard companion (Windows preview)
 
@@ -165,7 +200,8 @@ clidev notify --title "Claude Code" --message "Task finished"
 Writes Claude Code lifecycle hooks for you — atomically, idempotently, and with a backup.
 
 ```bash
-clidev hooks --claude              # Stop + Notification -> clidev notify
+clidev hooks --claude              # reply mode: every event -> clidev relay -> inbox (see section 0)
+clidev hooks --claude --notify-only  # Stop + Notification -> clidev notify (shape shown below)
 clidev hooks --claude --dry-run    # print the resulting JSON, write nothing
 clidev hooks --claude --remove     # strip our hooks, keep everything else
 clidev hooks                        # guides for Antigravity, OpenCode, Aider, aliases
@@ -181,7 +217,7 @@ Safety properties:
 * unrelated settings, matchers and other hooks survive untouched;
 * falls back to `node "<abs>/dist/index.js"` when `clidev` is not on `PATH`, so hooks keep working.
 
-Resulting shape:
+Resulting shape with `--notify-only`:
 
 ```json
 {
@@ -324,7 +360,17 @@ src/
 ├── clp.ts                clp entry — defaults to `paste`
 ├── cli.ts                commander program, argv aliasing, EPIPE-safe errors
 ├── version.ts            version injected by tsup `define`
+├── adapters/
+│   └── claude.ts         Claude Code hook payload <-> hub event / reply JSON
+├── hub/
+│   ├── protocol.ts       event, ask, reply and stats types shared by every adapter
+│   ├── store.ts          pure session + ask state, waiters, history
+│   ├── server.ts         127.0.0.1 HTTP hub: token, Host check, long-poll waits, toasts
+│   ├── inbox-page.ts     the self-contained inbox page
+│   └── client.ts         find or auto-start the hub, report, wait for a reply
 ├── commands/
+│   ├── hub.ts            `clidev hub` and `clidev inbox`
+│   ├── relay.ts          hook entry point: stdin payload -> hub -> stdout reply
 │   ├── bridge.ts         Windows clipboard bitmap + text-reference companion
 │   ├── companion.ts      opt-in per-user Windows login startup installer
 │   ├── paste.ts          clipboard image -> PNG -> path on clipboard
