@@ -30,6 +30,123 @@ export interface CapturedScreenshot {
   pruned: number;
 }
 
+/** The Windows clipboard sequence lets a companion skip unchanged contents. */
+export function windowsClipboardSequence(): number | null {
+  if (process.platform !== "win32") return null;
+
+  const script = [
+    "Add-Type @'",
+    "using System;",
+    "using System.Runtime.InteropServices;",
+    "public static class ClidevClipboardSequence {",
+    "  [DllImport(\"user32.dll\")] public static extern uint GetClipboardSequenceNumber();",
+    "}",
+    "'@",
+    "[ClidevClipboardSequence]::GetClipboardSequenceNumber()",
+  ].join("\n");
+
+  try {
+    const result = spawnSync(
+      "powershell.exe",
+      ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script],
+      { timeout: 5_000, windowsHide: true, encoding: "utf8" },
+    );
+    const value = Number.parseInt((result.stdout ?? "").trim(), 10);
+    return Number.isFinite(value) ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Streams sequence numbers from one hidden PowerShell process. Starting a new
+ * PowerShell process for every poll would make an always-on companion noisy.
+ */
+export function watchWindowsClipboardSequence(
+  intervalMs: number,
+  onSequence: (sequence: number) => void,
+): () => void {
+  if (process.platform !== "win32") return () => undefined;
+
+  const script = [
+    "Add-Type @'",
+    "using System;",
+    "using System.Runtime.InteropServices;",
+    "public static class ClidevClipboardSequence {",
+    "  [DllImport(\"user32.dll\")] public static extern uint GetClipboardSequenceNumber();",
+    "}",
+    "'@",
+    "while ($true) {",
+    "  [Console]::WriteLine([ClidevClipboardSequence]::GetClipboardSequenceNumber())",
+    `  Start-Sleep -Milliseconds ${intervalMs}`,
+    "}",
+  ].join("\n");
+
+  const child = spawn(
+    "powershell.exe",
+    ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script],
+    { stdio: ["ignore", "pipe", "ignore"], windowsHide: true },
+  );
+  child.stdout?.setEncoding("utf8");
+  let pending = "";
+  child.stdout?.on("data", (chunk: string) => {
+    pending += chunk;
+    const lines = pending.split(/\r?\n/u);
+    pending = lines.pop() ?? "";
+    for (const line of lines) {
+      const sequence = Number.parseInt(line.trim(), 10);
+      if (Number.isFinite(sequence)) onSequence(sequence);
+    }
+  });
+
+  return () => {
+    try {
+      child.kill();
+    } catch {
+      // The process has already stopped.
+    }
+  };
+}
+
+/**
+ * Adds text beside the image rather than replacing it. Rich composers may
+ * choose the bitmap; ordinary terminals paste the text reference.
+ */
+export function addWindowsClipboardTextForImage(filePath: string, text: string): boolean {
+  if (process.platform !== "win32") return false;
+
+  const script = [
+    "$ErrorActionPreference = 'Stop'",
+    "Add-Type -AssemblyName System.Windows.Forms",
+    "Add-Type -AssemblyName System.Drawing",
+    "$image = [System.Drawing.Image]::FromFile($env:CLIDEV_BRIDGE_IMAGE)",
+    "try {",
+    "  $data = New-Object System.Windows.Forms.DataObject",
+    "  $data.SetImage($image)",
+    "  $data.SetText($env:CLIDEV_BRIDGE_TEXT, [System.Windows.Forms.TextDataFormat]::UnicodeText)",
+    "  [System.Windows.Forms.Clipboard]::SetDataObject($data, $true)",
+    "} finally {",
+    "  $image.Dispose()",
+    "}",
+  ].join("\n");
+
+  try {
+    const result = spawnSync(
+      "powershell.exe",
+      ["-NoProfile", "-NonInteractive", "-STA", "-ExecutionPolicy", "Bypass", "-Command", script],
+      {
+        timeout: 10_000,
+        windowsHide: true,
+        stdio: "ignore",
+        env: { ...process.env, CLIDEV_BRIDGE_IMAGE: filePath, CLIDEV_BRIDGE_TEXT: text },
+      },
+    );
+    return result.status === 0 && result.error === undefined;
+  } catch {
+    return false;
+  }
+}
+
 interface CaptureAttempt {
   ok: boolean;
   detail: string;

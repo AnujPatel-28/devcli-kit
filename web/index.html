@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>clidev — the universal AI CLI developer kit</title>
-<meta name="description" content="Five commands that fix what terminal agents can't do: screenshot paste, finish alerts, Claude hooks, log scrubbing, and context packing. Local, no telemetry.">
+<title>clidev — the CLI coding agent companion</title>
+<meta name="description" content="An install-once clipboard companion and lifecycle toolkit for CLI coding agents. Local, no telemetry.">
 <meta name="theme-color" content="#080d1a">
 <meta name="color-scheme" content="dark">
 <meta property="og:type" content="website">
-<meta property="og:title" content="clidev — the universal AI CLI developer kit">
-<meta property="og:description" content="Screenshots, finish alerts, hooks, clean logs and context for Claude Code, Antigravity, OpenCode and Aider. Five commands, zero config, no telemetry.">
+<meta property="og:title" content="clidev — the CLI coding agent companion">
+<meta property="og:description" content="Clipboard image references, finish alerts, hooks, clean logs and context for CLI coding agents. Local and private by default.">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23080d1a'/%3E%3Cpath d='M9 11l5 5-5 5' stroke='%23709de9' stroke-width='2.4' fill='none' stroke-linecap='round'/%3E%3Cpath d='M17 21h7' stroke='%23ffffff' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -257,7 +257,7 @@ tbody td:first-child{font-family:var(--mono);font-size:11.5px;color:var(--ink);w
       <div>
         <p class="eyebrow"><span class="dot" aria-hidden="true"></span> No Hands · Wispr Challenge — Builders</p>
         <h1>Your terminal agents are <em>blind, silent, and loud.</em></h1>
-        <p class="lede">clidev is the missing layer between you and Claude Code, Antigravity, OpenCode or Aider. <strong>Screenshots, finish alerts, lifecycle hooks, clean logs and file context</strong> — five commands, zero config, nothing leaves your machine.</p>
+        <p class="lede">clidev is the companion layer for Claude Code, Antigravity, OpenCode, Aider and other CLI agents. <strong>Clipboard image references, finish alerts, lifecycle hooks, clean logs and file context</strong> — local-first, with honest agent-specific adapters.</p>
 
         <div class="install">
           <span class="dollar" aria-hidden="true">$</span>
@@ -267,7 +267,7 @@ tbody td:first-child{font-family:var(--mono);font-size:11.5px;color:var(--ink);w
         <p class="mono-label" style="margin-top:.65rem;font-size:10px">run from the repo root · node ≥ 20.17</p>
 
         <ul class="hero-meta">
-          <li>5 commands</li>
+          <li>install-once companion</li>
           <li>macOS · Windows · Linux</li>
           <li>0 telemetry</li>
         </ul>
@@ -280,7 +280,7 @@ tbody td:first-child{font-family:var(--mono);font-size:11.5px;color:var(--ink);w
           <span class="term-status">localhost</span>
         </div>
         <div class="term-tabs" role="tablist" aria-label="clidev commands">
-          <button type="button" role="tab" id="tab-paste" aria-controls="term-output" aria-selected="true" data-scenario="paste">clp</button>
+          <button type="button" role="tab" id="tab-paste" aria-controls="term-output" aria-selected="true" data-scenario="paste">clidev bridge</button>
           <button type="button" role="tab" id="tab-watch" aria-controls="term-output" aria-selected="false" tabindex="-1" data-scenario="watch">clidev watch</button>
           <button type="button" role="tab" id="tab-hooks" aria-controls="term-output" aria-selected="false" tabindex="-1" data-scenario="hooks">clidev hooks --claude</button>
           <button type="button" role="tab" id="tab-clean" aria-controls="term-output" aria-selected="false" tabindex="-1" data-scenario="clean">clidev clean</button>
@@ -302,16 +302,16 @@ tbody td:first-child{font-family:var(--mono);font-size:11.5px;color:var(--ink);w
     <div class="wrap">
       <div class="section-head" data-reveal>
         <span class="index">01</span>
-        <h2>Five things your terminal still can't do</h2>
+        <h2>Five gaps CLI agents still leave behind</h2>
         <p>Each row is one concrete failure mode and the command that removes it. Click a chip to replay it in the terminal above.</p>
       </div>
 
       <ol class="problems">
         <li class="problem" data-reveal>
           <span class="num">01</span>
-          <h3>Paste a screenshot<span>A clipboard bitmap is invisible to an agent.</span></h3>
-          <p><code>clp</code> grabs the image through the OS clipboard, validates it as a real PNG, saves it under <code>~/.clidev/screenshots/</code>, and copies the path.</p>
-          <button type="button" class="cmd-chip" data-scenario="paste" aria-label="Replay clp in the demo terminal">clp</button>
+          <h3>Paste visual context<span>A screenshot should work in a text-only terminal too.</span></h3>
+          <p><code>clidev bridge</code> saves clipboard images as validated PNGs and adds an <code>@path</code> alongside the bitmap, ready for Ctrl+V. <code>clp</code> is the explicit fallback.</p>
+          <button type="button" class="cmd-chip" data-scenario="paste" aria-label="Replay clidev bridge in the demo terminal">clidev bridge</button>
         </li>
         <li class="problem" data-reveal>
           <span class="num">02</span>
@@ -350,6 +350,14 @@ tbody td:first-child{font-family:var(--mono);font-size:11.5px;color:var(--ink);w
       </div>
 
       <div class="ref">
+        <article class="ref-row" data-reveal>
+          <div class="ref-cmd">clidev bridge<span class="sub">Windows clipboard companion</span></div>
+          <div class="ref-body">
+            <p>Clipboard image → validated PNG + terminal-pasteable <code>@path</code>, while preserving the image for rich composers. <code>companion install</code> starts it at login.</p>
+            <div class="flags"><span class="flag">--once</span><span class="flag">--format</span><span class="flag">--out</span><span class="flag">--keep</span><span class="flag">--no-notify</span></div>
+          </div>
+          <button type="button" class="copy-mini" data-copy="clidev companion install">copy</button>
+        </article>
         <article class="ref-row" data-reveal>
           <div class="ref-cmd">clidev paste<span class="sub">alias: clp</span></div>
           <div class="ref-body">
@@ -543,7 +551,7 @@ clidev watch "npm run build"</pre>
     <div class="footer-grid">
       <div>
         <a class="brand" href="#top"><span class="mark">&gt;_</span> clidev</a>
-        <p>Five commands for the gaps terminal agents leave behind. Local-only, MIT, and specified by voice for the No Hands hackathon.</p>
+        <p>The local-first companion for the gaps CLI coding agents leave behind. MIT and specified by voice for the No Hands hackathon.</p>
       </div>
       <nav class="footer-links" aria-label="Footer">
         <a href="#problems">Problems</a>
@@ -565,15 +573,15 @@ clidev watch "npm run build"</pre>
 
   var scenarios = {
     paste: {
-      cmd: "clp",
+      cmd: "clidev bridge",
       lines: [
-        "::ok::✔ reading the clipboard done",
-        "~/.clidev/screenshots/shot_20261026-140122.png",
-        "::box::╭─ screenshot ready ────────────────────────────────────────────╮",
+        "::dim::clidev bridge is running — screenshots will become pasteable @paths",
+        "::ok::✔ clipboard screenshot bridged",
+        "::box::╭─ Ctrl+V is ready ──────────────────────────────────────────────╮",
         "::box::│ file       ~/.clidev/screenshots/shot_20261026-140122.png     │",
         "::box::│ size       1.2 MB                                             │",
-        "::box::│ clipboard  absolute path                                      │",
-        "::box::│ next       Ctrl+V inside Claude Code, Antigravity or OpenCode │",
+        "::box::│ terminal   @~/.clidev/screenshots/shot_20261026-140122.png   │",
+        "::box::│ next       focus a text-only agent input and press Ctrl+V     │",
         "::box::╰───────────────────────────────────────────────────────────────╯"
       ]
     },

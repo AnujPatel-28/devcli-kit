@@ -84,7 +84,7 @@ async function writeSettings(
 
 function printIntegrationGuide(): void {
   note("Wire the same alerts into every other agent", [
-    "Antigravity CLI   clidev watch \"antigravity run 'fix the failing tests'\" --title Antigravity",
+    "Antigravity CLI   clidev watch \"agy --print 'fix the failing tests'\" --title Antigravity",
     'OpenCode          clidev watch "opencode" --title OpenCode',
     "Aider             clidev watch \"aider --message 'refactor auth'\" --title Aider",
     'Any long build    clidev watch "npm run build" --sound',

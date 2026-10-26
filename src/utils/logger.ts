@@ -87,14 +87,14 @@ export function printBanner(version: string): void {
   const columns = process.stderr.columns ?? 80;
   if (columns < 52) {
     writeErr(`${pc.bold(pc.blue("clidev"))} ${pc.dim(`v${version}`)}`);
-    writeErr(pc.dim("universal ai cli developer kit"));
+    writeErr(pc.dim("cli coding agent companion"));
     blank();
     return;
   }
 
   blank();
   for (const line of WORDMARK) writeErr(pc.blue(line));
-  writeErr(`${pc.dim("  universal ai cli developer kit")}  ${pc.dim(`v${version}`)}`);
+  writeErr(`${pc.dim("  cli coding agent companion")}  ${pc.dim(`v${version}`)}`);
   writeErr(pc.dim(`  ${"─".repeat(Math.min(columns - 4, 64))}`));
   blank();
 }

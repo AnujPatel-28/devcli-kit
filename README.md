@@ -1,31 +1,50 @@
 # clidev
 
-**The universal AI CLI developer kit.** Five commands for the things terminal agents still cannot do: see your clipboard, tell you when they finish, wire their own hooks, swallow noisy logs, and take a folder of context.
+**The toolkit for the things CLI coding agents still lack.** Visual clipboard context, lifecycle alerts, hook wiring, safe log sharing and context packing — all local, with agent-specific adapters where they exist.
 
 Built for **[No Hands: The Wispr Challenge](https://www.wemakedevs.org/wispr)** — Builders track. The spec, prompts and docs for this project were dictated, not typed.
 
 ```
-$ clp
-screenshot ready
+$ clidev bridge
+clidev bridge is running — screenshots will become pasteable @paths
+
+# take a Windows snip, then focus an agent input and press Ctrl+V
+clipboard screenshot bridged
   file       C:\Users\you\.clidev\screenshots\shot_20261026-140122.png
   size       1.2 MB
-  clipboard  absolute path
-  next       Ctrl+V inside Claude Code, Antigravity or OpenCode
+  terminal   @C:\Users\you\.clidev\screenshots\shot_20261026-140122.png
+  next       Ctrl+V inside a text-only agent input
 ```
 
 ---
 
-## The five problems
+## The CLI agent gaps
 
 | # | Command | What it fixes |
 |---|---------|---------------|
-| 1 | `clidev paste` · `clp` | Terminals can't `Ctrl+V` a raw screenshot. Agents need a file path, not a bitmap on the clipboard. |
+| 1 | `clidev bridge` · `clidev paste` · `clp` | A Windows clipboard companion turns a screenshot into a saved PNG plus terminal-pasteable `@path`; `clp` remains the explicit cross-platform fallback. |
 | 2 | `clidev watch` · `clidev notify` | Long agent runs are silent. You come back to a finished build — or find it waiting on a permission prompt. |
-| 3 | `clidev hooks --claude` | Lifecycle hooks mean hand-editing JSON and praying you didn't break the file. |
+| 3 | `clidev hooks --claude` | Lifecycle events differ by agent. Claude Code has supported hooks; other agents use their documented adapters or the portable `watch` fallback. |
 | 4 | `clidev clean` | Pasted logs arrive with ANSI garbage, 40 stack frames and a live API key in the middle. |
 | 5 | `clidev pack` | Giving an agent context is a manual `@`-file hunt, one path at a time. |
 
 Everything is local. No accounts, no telemetry, no network calls.
+
+### What is universal, and what is an adapter?
+
+`bridge` is an opt-in **Windows preview**. It watches for image clipboard changes, saves a PNG locally, then publishes both the original bitmap and a text reference on the clipboard. Image-aware apps can still choose the bitmap; a text-only terminal pastes the `@path`. It does not inject into an app or pretend every agent understands image paths — test the target agent once.
+
+For the install-once workflow, run `clidev companion install`. It adds one **per-user Windows login** entry that starts the local bridge hidden at sign-in. It does not watch copied text, inject keystrokes into an agent, upload a screenshot, or modify agent configuration. Remove it at any time with `clidev companion uninstall`.
+
+Completion notifications cannot be universally inferred from an interactive agent that stays open. `clidev hooks --claude` handles Claude Code's documented lifecycle events. `clidev watch` is the portable fallback for any finite command, including non-interactive agent runs. Future agent adapters belong behind the same capability model rather than guessed private configuration.
+
+| Capability | Works with any CLI agent | What the agent needs |
+|---|---|---|
+| Clipboard bridge | Yes, as an `@path` or plain file path | Permission and ability to inspect a local image file |
+| `watch` completion alert | Yes, for a command that exits | Launch that command through `clidev watch` |
+| Task-finished / input-needed alert | No universal signal exists | A documented hook, plugin or event adapter (Claude Code is included) |
+| Cleaned logs / packed context | Yes | Accept pasted text |
+| `notify` | Yes | Any supported hook or shell script can call it |
 
 ---
 
@@ -61,9 +80,32 @@ clidev --help
 
 ---
 
-## 1. `clidev paste` / `clp`
+## 1. `clidev bridge` — install-once clipboard companion (Windows preview)
 
-Terminals cannot paste a screenshot. This pulls the image out of the OS clipboard through native APIs, writes a real PNG, and puts a path on your clipboard that Claude Code, Antigravity, OpenCode or Aider can open.
+For the no-extra-command workflow, install the companion once after linking:
+
+```bash
+clidev companion install
+```
+
+At your next Windows sign-in, the local bridge starts hidden. When you take a screenshot or copy an image, it saves a validated PNG and places **both** the original image and a terminal-friendly text reference on the clipboard. Focus a text-only coding agent and press `Ctrl+V` to paste an `@C:\...\shot.png` reference. Stop automatic startup at any time:
+
+```bash
+clidev companion status
+clidev companion uninstall
+```
+
+The bridge never injects keystrokes, reads normal copied text, sends data over the network, or changes an agent's configuration. Image-aware apps may choose the bitmap instead of the text reference. A particular agent must be able to read local image paths for the reference to be useful.
+
+```bash
+clidev bridge                    # run visibly in this session
+clidev bridge --once             # test the current screenshot once
+clidev bridge --format prompt    # paste: Please inspect this screenshot: C:\\...
+```
+
+## 2. `clidev paste` / `clp` — explicit, cross-platform fallback
+
+Text-only terminals cannot natively paste a screenshot bitmap. This explicit fallback pulls the image out of the OS clipboard through native APIs, writes a real PNG, and puts a path on your clipboard. Use it on macOS/Linux or whenever you do not want the companion running.
 
 ```bash
 clp                       # save + copy the absolute path, print it on stdout
@@ -94,7 +136,7 @@ Failure is explicit, never silent:
 
 ---
 
-## 2. `clidev watch` / `clidev notify`
+## 3. `clidev watch` / `clidev notify`
 
 Wrap anything long-running. When it exits you get a native toast, a terminal bell, and a summary with the wall-clock duration.
 
@@ -118,7 +160,7 @@ clidev notify --title "Claude Code" --message "Task finished"
 
 ---
 
-## 3. `clidev hooks`
+## 4. `clidev hooks`
 
 Writes Claude Code lifecycle hooks for you — atomically, idempotently, and with a backup.
 
@@ -173,7 +215,7 @@ Resulting shape:
 Other agents get `clidev watch` guidance rather than a guessed private config schema:
 
 ```
-Antigravity CLI   clidev watch "antigravity run 'fix the failing tests'" --title Antigravity
+Antigravity CLI   clidev watch "agy --print 'fix the failing tests'" --title Antigravity
 OpenCode          clidev watch "opencode" --title OpenCode
 Aider             clidev watch "aider --message 'refactor auth'" --title Aider
 Shell alias       alias cc='clidev watch "claude" --title "Claude Code"'
@@ -181,7 +223,7 @@ Shell alias       alias cc='clidev watch "claude" --title "Claude Code"'
 
 ---
 
-## 4. `clidev clean`
+## 5. `clidev clean`
 
 A pipe filter for logs you are about to paste into an agent.
 
@@ -213,7 +255,7 @@ Masking is idempotent, so running `clean` twice never double-redacts. `--keep-fr
 
 ---
 
-## 5. `clidev pack`
+## 6. `clidev pack`
 
 Turns a set of files into one markdown block with a directory tree, language-tagged fences and a token estimate — then puts it on the clipboard.
 
@@ -283,6 +325,8 @@ src/
 ├── cli.ts                commander program, argv aliasing, EPIPE-safe errors
 ├── version.ts            version injected by tsup `define`
 ├── commands/
+│   ├── bridge.ts         Windows clipboard bitmap + text-reference companion
+│   ├── companion.ts      opt-in per-user Windows login startup installer
 │   ├── paste.ts          clipboard image -> PNG -> path on clipboard
 │   ├── watch.ts          spawn + duration + notify + signal forwarding
 │   ├── notify.ts         toast + bell, best effort
