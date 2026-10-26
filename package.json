@@ -1,0 +1,58 @@
+{
+  "name": "clidev",
+  "version": "0.1.0",
+  "description": "The universal AI CLI developer kit: screenshot paste, finish alerts, hook wiring, log scrubbing and context packing for terminal agents.",
+  "type": "module",
+  "bin": {
+    "clidev": "./dist/index.js",
+    "clp": "./dist/clp.js"
+  },
+  "main": "./dist/index.js",
+  "files": [
+    "dist",
+    "web",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20.17.0"
+  },
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test \"src/**/*.test.ts\"",
+    "check": "npm run typecheck && npm run test && npm run build",
+    "start": "node dist/index.js",
+    "link": "npm link",
+    "unlink": "npm unlink -g clidev"
+  },
+  "keywords": [
+    "ai",
+    "cli",
+    "claude-code",
+    "opencode",
+    "antigravity",
+    "aider",
+    "clipboard",
+    "screenshot",
+    "notifications",
+    "terminal",
+    "developer-tools"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@clack/prompts": "^1.8.1",
+    "clipboardy": "^5.3.2",
+    "commander": "^15.0.0",
+    "fast-glob": "^3.3.3",
+    "node-notifier": "^10.0.1",
+    "picocolors": "^1.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/node-notifier": "^8.0.5",
+    "tsup": "^9.0.0",
+    "tsx": "^4.23.15",
+    "typescript": "^5.6.0"
+  }
+}

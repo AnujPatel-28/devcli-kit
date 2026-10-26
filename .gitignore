@@ -1,0 +1,30 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+*.tsbuildinfo
+
+# local runtime data
+.clidev/
+.tmp-*
+
+# logs and OS noise
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+
+# local hackathon research and private project brief
+docs/
+wispr_*.txt
+
+# test/coverage artifacts
+coverage/
+
+# editors
+.vscode/
+.idea/
+
+# deploy metadata
+.vercel/

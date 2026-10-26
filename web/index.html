@@ -1,0 +1,816 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>clidev — the universal AI CLI developer kit</title>
+<meta name="description" content="Five commands that fix what terminal agents can't do: screenshot paste, finish alerts, Claude hooks, log scrubbing, and context packing. Local, no telemetry.">
+<meta name="theme-color" content="#080d1a">
+<meta name="color-scheme" content="dark">
+<meta property="og:type" content="website">
+<meta property="og:title" content="clidev — the universal AI CLI developer kit">
+<meta property="og:description" content="Screenshots, finish alerts, hooks, clean logs and context for Claude Code, Antigravity, OpenCode and Aider. Five commands, zero config, no telemetry.">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23080d1a'/%3E%3Cpath d='M9 11l5 5-5 5' stroke='%23709de9' stroke-width='2.4' fill='none' stroke-linecap='round'/%3E%3Cpath d='M17 21h7' stroke='%23ffffff' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#080d1a;
+  --surface:#0d1528;
+  --surface-2:#101a30;
+  --line:rgba(112,157,233,.18);
+  --line-strong:rgba(112,157,233,.36);
+  --ink:#ffffff;
+  --body:#a9b8d4;
+  --muted:#6f82a3;
+  --blue:#044396;
+  --electric:#709de9;
+  --cyan:#8fd0ff;
+  --ok:#5ad1a0;
+  --warn:#e6b566;
+  --err:#f2777a;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:"DM Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --display:"Syne",var(--sans);
+  --r:6px;
+  --w:min(1180px,calc(100vw - 3rem));
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth;scroll-padding-top:88px}
+body{margin:0;background:var(--bg);color:var(--body);font:400 16px/1.65 var(--sans);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:64px 64px;opacity:.22;-webkit-mask-image:radial-gradient(ellipse 80% 55% at 50% 0%,#000 20%,transparent 78%);mask-image:radial-gradient(ellipse 80% 55% at 50% 0%,#000 20%,transparent 78%)}
+img,svg{display:block;max-width:100%}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+h1,h2,h3{font-family:var(--display);color:var(--ink);margin:0;line-height:1.04;letter-spacing:-.03em;font-weight:700}
+p{margin:0}
+code,pre,kbd{font-family:var(--mono)}
+ul,ol{margin:0;padding:0;list-style:none}
+::selection{background:rgba(112,157,233,.3);color:#fff}
+:focus-visible{outline:2px solid var(--electric);outline-offset:3px;border-radius:2px}
+.wrap{width:var(--w);margin-inline:auto;position:relative;z-index:1}
+.skip{position:absolute;left:-999px;top:0;background:var(--electric);color:#04122a;padding:.6rem 1rem;z-index:200}
+.skip:focus{left:1rem;top:1rem}
+.mono-label{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}}
+/* ---------- nav ---------- */
+.nav{position:sticky;top:0;z-index:60;border-bottom:1px solid var(--line);background:rgba(8,13,26,.84);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.nav-inner{display:flex;align-items:center;gap:2rem;height:64px;width:var(--w);margin-inline:auto}
+.brand{display:flex;align-items:baseline;gap:.5rem;font-family:var(--mono);color:var(--ink);font-size:15px;letter-spacing:-.02em}
+.brand .mark{color:var(--electric)}
+.brand .ver{font-size:9.5px;letter-spacing:.1em;color:var(--muted);border:1px solid var(--line);border-radius:3px;padding:.12rem .34rem;transform:translateY(-2px)}
+.nav-links{display:flex;align-items:center;gap:1.7rem;margin-left:auto;font-size:13.5px}
+.nav-links a{color:var(--muted);transition:color .18s ease}
+.nav-links a:hover{color:var(--ink)}
+.nav-cta{font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;color:var(--ink);border:1px solid var(--line-strong);background:rgba(4,67,150,.28);border-radius:4px;padding:.48rem .8rem;transition:border-color .18s,background .18s}
+.nav-cta:hover{border-color:var(--electric);background:rgba(4,67,150,.48)}
+
+/* ---------- hero ---------- */
+.hero{position:relative;padding:5.25rem 0 4.5rem;border-bottom:1px solid var(--line);overflow:hidden}
+.hero::after{content:"";position:absolute;top:-20%;right:-10%;width:52rem;height:32rem;background:radial-gradient(closest-side,rgba(4,67,150,.42),transparent 72%);pointer-events:none;z-index:0}
+.hero-grid{display:grid;grid-template-columns:1.02fr .98fr;gap:3.5rem;align-items:start}
+.eyebrow{display:inline-flex;align-items:center;gap:.55rem;font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--electric);margin-bottom:1.5rem}
+.eyebrow .dot{width:6px;height:6px;border-radius:50%;background:var(--electric);box-shadow:0 0 12px var(--electric);animation:pulse 2.8s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:.5}50%{opacity:1}}
+.hero h1{font-size:clamp(2.35rem,4.4vw,3.75rem);font-weight:800;letter-spacing:-.045em}
+.hero h1 em{font-style:normal;color:var(--electric)}
+.lede{margin-top:1.5rem;max-width:50ch;font-size:1.05rem}
+.lede strong{color:var(--ink);font-weight:500}
+.install{display:flex;align-items:stretch;margin-top:2rem;max-width:26.5rem;border:1px solid var(--line);background:var(--surface);border-radius:var(--r);overflow:hidden}
+.install .dollar{display:flex;align-items:center;padding-left:.9rem;color:var(--muted);font-family:var(--mono);font-size:13px}
+.install code{flex:1;display:flex;align-items:center;padding:.78rem .4rem;font-size:12.5px;color:var(--ink);white-space:nowrap;overflow-x:auto}
+.copy-btn{display:inline-flex;align-items:center;gap:.4rem;padding:.78rem .9rem;border-left:1px solid var(--line);font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);transition:color .18s,background .18s}
+.copy-btn:hover{color:var(--ink);background:var(--surface-2)}
+.copy-btn.is-copied{color:var(--ok)}
+.hero-meta{display:flex;flex-wrap:wrap;gap:.6rem 1.6rem;margin-top:1.6rem;font-family:var(--mono);font-size:11.5px;color:var(--muted)}
+.hero-meta li{display:flex;align-items:center;gap:.5rem}
+.hero-meta li::before{content:"";width:4px;height:4px;border-radius:50%;background:var(--electric);opacity:.65}
+/* ---------- terminal simulator ---------- */
+.terminal{position:relative;border:1px solid var(--line-strong);border-radius:8px;background:#060a14;box-shadow:0 30px 90px -46px rgba(4,67,150,.95),inset 0 1px 0 rgba(255,255,255,.03);overflow:hidden}
+.terminal::before{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(112,157,233,.05),transparent 22%)}
+.term-bar{display:flex;align-items:center;gap:.8rem;padding:.6rem .9rem;border-bottom:1px solid var(--line);background:var(--surface)}
+.term-dots{display:flex;gap:5px}
+.term-dots i{width:8px;height:8px;border-radius:50%;background:#26375a}
+.term-dots i:nth-child(2){background:#31456d}
+.term-dots i:nth-child(3){background:#3c5483}
+.term-title{font-family:var(--mono);font-size:11px;color:var(--muted);letter-spacing:.04em}
+.term-status{margin-left:auto;display:flex;align-items:center;gap:.4rem;font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ok)}
+.term-status::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.term-tabs{display:flex;overflow-x:auto;border-bottom:1px solid var(--line);background:#080f1e;scrollbar-width:none}
+.term-tabs::-webkit-scrollbar{display:none}
+.term-tabs [role="tab"]{position:relative;padding:.62rem .85rem;font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap;border-right:1px solid rgba(112,157,233,.08);transition:color .16s,background .16s}
+.term-tabs [role="tab"]:hover{color:var(--ink);background:rgba(112,157,233,.05)}
+.term-tabs [role="tab"][aria-selected="true"]{color:var(--electric);background:rgba(4,67,150,.22)}
+.term-tabs [role="tab"][aria-selected="true"]::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:1px;background:var(--electric)}
+.term-body{margin:0;padding:1.15rem 1.2rem;min-height:23rem;max-height:29rem;overflow:auto;font-size:12.4px;line-height:1.72;color:#c7d4e8;white-space:pre-wrap;word-break:break-word;background:radial-gradient(120% 90% at 100% 0%,rgba(4,67,150,.14),transparent 60%)}
+.term-body .prompt{color:var(--electric)}
+.term-body .cmd{color:#fff}
+.term-body .line{display:block}
+.term-body .line.ok{color:var(--ok)}
+.term-body .line.err{color:var(--err)}
+.term-body .line.warn{color:var(--warn)}
+.term-body .line.dim{color:var(--muted)}
+.term-body .line.box{color:var(--electric)}
+.term-body .line.pad{color:var(--body)}
+.term-body .caret{color:var(--electric);animation:blink 1.1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.term-foot{display:flex;align-items:center;gap:1rem;padding:.55rem .9rem;border-top:1px solid var(--line);background:var(--surface)}
+.term-foot .hint{font-family:var(--mono);font-size:10px;letter-spacing:.05em;color:var(--muted)}
+.term-actions{margin-left:auto;display:flex;gap:.4rem}
+.term-actions button{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);border-radius:3px;padding:.3rem .5rem;transition:.16s}
+.term-actions button:hover{color:var(--ink);border-color:var(--line-strong)}
+/* ---------- section scaffolding ---------- */
+.section{position:relative;padding:5rem 0;border-bottom:1px solid var(--line)}
+.section-head{display:grid;grid-template-columns:4.5rem minmax(0,1fr) minmax(0,.72fr);gap:2rem;align-items:start;margin-bottom:2.75rem}
+.section-head .index{font-family:var(--mono);font-size:11.5px;letter-spacing:.16em;color:var(--electric);padding-top:.6rem;border-top:1px solid var(--line-strong)}
+.section-head h2{font-size:clamp(1.7rem,2.9vw,2.35rem);font-weight:700;letter-spacing:-.035em}
+.section-head p{max-width:42ch;padding-top:.35rem;font-size:.97rem}
+
+/* ---------- problem ledger ---------- */
+.problems{border-top:1px solid var(--line)}
+.problem{display:grid;grid-template-columns:3rem minmax(0,1.15fr) minmax(0,1fr) auto;gap:1.5rem;align-items:center;padding:1.45rem .5rem;border-bottom:1px solid var(--line);transition:background .18s ease}
+.problem:hover{background:rgba(112,157,233,.04)}
+.problem .num{font-family:var(--mono);font-size:11px;letter-spacing:.1em;color:var(--muted)}
+.problem h3{font-family:var(--sans);font-size:1.01rem;font-weight:500;color:var(--ink);letter-spacing:0;line-height:1.45}
+.problem h3 span{display:block;margin-top:.2rem;font-size:.9rem;font-weight:400;color:var(--muted)}
+.problem p{font-size:.92rem}
+.cmd-chip{display:inline-flex;align-items:center;gap:.5rem;font-family:var(--mono);font-size:11.5px;color:var(--electric);border:1px solid var(--line);background:rgba(4,67,150,.18);border-radius:4px;padding:.45rem .65rem;white-space:nowrap;transition:border-color .18s,background .18s,color .18s}
+.cmd-chip:hover{border-color:var(--electric);background:rgba(4,67,150,.42);color:#fff}
+.cmd-chip::after{content:"↗";font-size:10px;opacity:.7}
+
+/* ---------- command reference ---------- */
+.ref{border-top:1px solid var(--line)}
+.ref-row{display:grid;grid-template-columns:15.5rem minmax(0,1fr) auto;gap:1.75rem;align-items:start;padding:1.35rem .5rem;border-bottom:1px solid var(--line);transition:background .18s ease}
+.ref-row:hover{background:rgba(112,157,233,.04)}
+.ref-cmd{font-family:var(--mono);font-size:12.5px;line-height:1.6;color:var(--ink)}
+.ref-cmd .sub{display:block;margin-top:.3rem;font-size:11px;color:var(--muted)}
+.ref-body p{font-size:.92rem}
+.ref-body .flags{display:flex;flex-wrap:wrap;gap:.35rem .5rem;margin-top:.6rem}
+.ref-body .flag{font-family:var(--mono);font-size:10.5px;color:var(--muted);border:1px solid var(--line);border-radius:3px;padding:.12rem .4rem}
+.copy-mini{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);border-radius:3px;padding:.32rem .5rem;transition:.16s}
+.copy-mini:hover{color:var(--ink);border-color:var(--line-strong)}
+/* ---------- before / after ---------- */
+.diff{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem}
+.diff-panel{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);overflow:hidden}
+.diff-panel header{display:flex;justify-content:space-between;align-items:center;gap:1rem;padding:.55rem .8rem;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.diff-panel.after header{color:var(--electric);border-bottom-color:var(--line-strong)}
+.diff-panel pre{margin:0;padding:.95rem;max-height:19rem;overflow:auto;font-size:11.3px;line-height:1.72;white-space:pre-wrap;word-break:break-word;color:#b9c8e2}
+.diff-panel .bad{color:var(--err)}
+.diff-panel .gone{color:#4b5c7a}
+.diff-panel .good{color:var(--electric)}
+.diff-stats{display:flex;flex-wrap:wrap;gap:1.5rem;margin-top:1.1rem;font-family:var(--mono);font-size:11px;color:var(--muted)}
+.diff-stats b{color:var(--electric);font-weight:500}
+
+/* ---------- hooks + code ---------- */
+.split{display:grid;grid-template-columns:minmax(0,1.02fr) minmax(0,.98fr);gap:2.5rem;align-items:start}
+.code-block{border:1px solid var(--line);border-radius:var(--r);background:#060a14;overflow:hidden}
+.code-block header{display:flex;justify-content:space-between;align-items:center;gap:1rem;padding:.55rem .8rem;border-bottom:1px solid var(--line);background:var(--surface);font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.code-block pre{margin:0;padding:1rem;overflow:auto;font-size:11.5px;line-height:1.78;color:#bccbe5}
+.code-block .k{color:var(--cyan)}
+.code-block .s{color:#a8d8b9}
+.code-block .c{color:#54688c}
+.checklist{display:grid;gap:.85rem;margin-top:1.5rem}
+.checklist li{display:grid;grid-template-columns:1.1rem 1fr;gap:.65rem;font-size:.94rem}
+.checklist li::before{content:"✓";font-family:var(--mono);font-size:12px;color:var(--electric)}
+.checklist strong{color:var(--ink);font-weight:500}
+/* ---------- install ---------- */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem;counter-reset:step}
+.step{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);padding:1.25rem}
+.step::before{counter-increment:step;content:"0" counter(step);font-family:var(--mono);font-size:10.5px;letter-spacing:.12em;color:var(--electric)}
+.step h3{margin:.55rem 0 .7rem;font-family:var(--sans);font-size:.97rem;font-weight:500;letter-spacing:0;color:var(--ink)}
+.step pre{margin:0;font-size:11.3px;line-height:1.72;color:#bccbe5;white-space:pre-wrap;word-break:break-word}
+.platform{margin-top:2.5rem;border:1px solid var(--line);border-radius:var(--r);background:var(--surface);overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:.89rem;min-width:38rem}
+thead th{text-align:left;padding:.7rem .9rem;border-bottom:1px solid var(--line);background:rgba(4,67,150,.16);font-family:var(--mono);font-size:10px;font-weight:400;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+tbody td{padding:.7rem .9rem;border-bottom:1px solid rgba(112,157,233,.08);vertical-align:top}
+tbody tr:last-child td{border-bottom:0}
+tbody td:first-child{font-family:var(--mono);font-size:11.5px;color:var(--ink);white-space:nowrap}
+.yes{color:var(--ok)}
+
+/* ---------- footer ---------- */
+.footer{padding:3rem 0}
+.footer-grid{display:flex;flex-wrap:wrap;gap:2rem;justify-content:space-between;align-items:flex-start}
+.footer .brand{font-size:16px;margin-bottom:.75rem}
+.footer p{max-width:40ch;font-size:.85rem}
+.footer-links{display:flex;flex-wrap:wrap;gap:1.5rem;font-family:var(--mono);font-size:11px;color:var(--muted)}
+.footer-links a{transition:color .16s}
+.footer-links a:hover{color:var(--electric)}
+.footer-bottom{display:flex;flex-wrap:wrap;gap:1rem;justify-content:space-between;margin-top:2.25rem;padding-top:1.25rem;border-top:1px solid var(--line);font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;color:#4f6080}
+
+/* ---------- reveal ---------- */
+[data-reveal]{opacity:0;transform:translateY(14px);transition:opacity .6s ease,transform .6s ease}
+[data-reveal].is-in{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){[data-reveal]{opacity:1;transform:none}}
+
+/* ---------- responsive ---------- */
+@media (max-width:1040px){
+  .hero-grid{grid-template-columns:1fr;gap:2.75rem}
+  .section-head{grid-template-columns:3rem minmax(0,1fr)}
+  .section-head p{grid-column:2}
+  .problem{grid-template-columns:2.5rem minmax(0,1fr) auto;row-gap:.7rem}
+  .problem p{grid-column:2 / 4}
+  .ref-row{grid-template-columns:1fr;gap:.75rem}
+  .split{grid-template-columns:1fr}
+  .diff{grid-template-columns:1fr}
+  .steps{grid-template-columns:1fr}
+}
+@media (max-width:720px){
+  :root{--w:calc(100vw - 2rem)}
+  .nav-links{display:none}
+  .nav-inner{height:58px;gap:1rem}
+  .hero{padding:3.25rem 0 3rem}
+  .section{padding:3.5rem 0}
+  .section-head{grid-template-columns:1fr;gap:.75rem}
+  .section-head p{grid-column:1}
+  .section-head .index{padding-top:0;border-top:0}
+  .problem{grid-template-columns:2.2rem minmax(0,1fr);gap:.5rem 1rem}
+  .problem .cmd-chip{grid-column:2;justify-self:start}
+  .problem p{grid-column:2}
+  .term-body{min-height:20rem;font-size:11.2px;padding:1rem}
+  .hero h1{letter-spacing:-.035em}
+  .footer-bottom{font-size:10px}
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="nav">
+  <div class="nav-inner">
+    <a class="brand" href="#top" aria-label="clidev home"><span class="mark">&gt;_</span> clidev <span class="ver">v0.1.0</span></a>
+    <nav class="nav-links" aria-label="Sections">
+      <a href="#problems">Problems</a>
+      <a href="#commands">Commands</a>
+      <a href="#clean">Clean</a>
+      <a href="#hooks">Hooks</a>
+      <a href="#install">Install</a>
+    </nav>
+    <a class="nav-cta" href="#install">get started</a>
+  </div>
+</header>
+
+<main id="main">
+  <section class="hero" id="top">
+    <div class="wrap hero-grid">
+      <div>
+        <p class="eyebrow"><span class="dot" aria-hidden="true"></span> No Hands · Wispr Challenge — Builders</p>
+        <h1>Your terminal agents are <em>blind, silent, and loud.</em></h1>
+        <p class="lede">clidev is the missing layer between you and Claude Code, Antigravity, OpenCode or Aider. <strong>Screenshots, finish alerts, lifecycle hooks, clean logs and file context</strong> — five commands, zero config, nothing leaves your machine.</p>
+
+        <div class="install">
+          <span class="dollar" aria-hidden="true">$</span>
+          <code id="install-command">npm install &amp;&amp; npm run build &amp;&amp; npm link</code>
+          <button type="button" class="copy-btn" data-copy-target="install-command">copy</button>
+        </div>
+        <p class="mono-label" style="margin-top:.65rem;font-size:10px">run from the repo root · node ≥ 20.17</p>
+
+        <ul class="hero-meta">
+          <li>5 commands</li>
+          <li>macOS · Windows · Linux</li>
+          <li>0 telemetry</li>
+        </ul>
+      </div>
+
+      <div class="terminal" data-reveal>
+        <div class="term-bar">
+          <span class="term-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="term-title">clidev — live demo</span>
+          <span class="term-status">localhost</span>
+        </div>
+        <div class="term-tabs" role="tablist" aria-label="clidev commands">
+          <button type="button" role="tab" id="tab-paste" aria-controls="term-output" aria-selected="true" data-scenario="paste">clp</button>
+          <button type="button" role="tab" id="tab-watch" aria-controls="term-output" aria-selected="false" tabindex="-1" data-scenario="watch">clidev watch</button>
+          <button type="button" role="tab" id="tab-hooks" aria-controls="term-output" aria-selected="false" tabindex="-1" data-scenario="hooks">clidev hooks --claude</button>
+          <button type="button" role="tab" id="tab-clean" aria-controls="term-output" aria-selected="false" tabindex="-1" data-scenario="clean">clidev clean</button>
+          <button type="button" role="tab" id="tab-pack" aria-controls="term-output" aria-selected="false" tabindex="-1" data-scenario="pack">clidev pack</button>
+        </div>
+        <pre class="term-body" id="term-output" role="tabpanel" aria-labelledby="tab-paste" aria-live="polite" tabindex="0"><span class="line dim">Loading demo…</span></pre>
+        <div class="term-foot">
+          <span class="hint">click a command · real output strings</span>
+          <div class="term-actions">
+            <button type="button" id="term-replay">replay</button>
+            <button type="button" class="copy-btn" style="border-left:0;padding:.3rem .5rem" data-copy-target="term-output">copy</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="problems">
+    <div class="wrap">
+      <div class="section-head" data-reveal>
+        <span class="index">01</span>
+        <h2>Five things your terminal still can't do</h2>
+        <p>Each row is one concrete failure mode and the command that removes it. Click a chip to replay it in the terminal above.</p>
+      </div>
+
+      <ol class="problems">
+        <li class="problem" data-reveal>
+          <span class="num">01</span>
+          <h3>Paste a screenshot<span>A clipboard bitmap is invisible to an agent.</span></h3>
+          <p><code>clp</code> grabs the image through the OS clipboard, validates it as a real PNG, saves it under <code>~/.clidev/screenshots/</code>, and copies the path.</p>
+          <button type="button" class="cmd-chip" data-scenario="paste" aria-label="Replay clp in the demo terminal">clp</button>
+        </li>
+        <li class="problem" data-reveal>
+          <span class="num">02</span>
+          <h3>Know when it ends<span>A 40-minute agent run finishes into an empty room.</span></h3>
+          <p>Wrap the command once. You get a native toast, a terminal bell, the wall-clock time and the real exit code.</p>
+          <button type="button" class="cmd-chip" data-scenario="watch" aria-label="Replay clidev watch in the demo terminal">clidev watch</button>
+        </li>
+        <li class="problem" data-reveal>
+          <span class="num">03</span>
+          <h3>Wire the hooks<span>Lifecycle hooks mean hand-editing settings.json.</span></h3>
+          <p>Atomic writes, timestamped backup, idempotent merge. <code>--remove</code> takes our entries out and leaves yours alone.</p>
+          <button type="button" class="cmd-chip" data-scenario="hooks" aria-label="Replay clidev hooks in the demo terminal">clidev hooks</button>
+        </li>
+        <li class="problem" data-reveal>
+          <span class="num">04</span>
+          <h3>Clean the log<span>ANSI noise, 40 stack frames and a live API key.</span></h3>
+          <p>Strips escapes, masks 14 credential shapes, folds framework frames, then hands you the log and a receipt of what it saved.</p>
+          <button type="button" class="cmd-chip" data-scenario="clean" aria-label="Replay clidev clean in the demo terminal">clidev clean</button>
+        </li>
+        <li class="problem" data-reveal>
+          <span class="num">05</span>
+          <h3>Carry the context<span>Twelve files, twelve <code>@</code> mentions, zero patience.</span></h3>
+          <p>Glob to markdown with a directory tree, correct fences and a token budget you can actually see.</p>
+          <button type="button" class="cmd-chip" data-scenario="pack" aria-label="Replay clidev pack in the demo terminal">clidev pack</button>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="section" id="commands">
+    <div class="wrap">
+      <div class="section-head" data-reveal>
+        <span class="index">02</span>
+        <h2>The whole surface</h2>
+        <p>No hidden modes. Payload goes to stdout, decoration to stderr, so every command composes with the shell you already use.</p>
+      </div>
+
+      <div class="ref">
+        <article class="ref-row" data-reveal>
+          <div class="ref-cmd">clidev paste<span class="sub">alias: clp</span></div>
+          <div class="ref-body">
+            <p>Screenshot → validated PNG → absolute path on the clipboard. Windows uses PowerShell STA and .NET; macOS uses pngpaste or osascript; Linux uses wl-paste or xclip.</p>
+            <div class="flags"><span class="flag">--at</span><span class="flag">--base64</span><span class="flag">--out</span><span class="flag">--keep</span><span class="flag">--no-copy</span><span class="flag">--json</span></div>
+          </div>
+          <button type="button" class="copy-mini" data-copy="clp">copy</button>
+        </article>
+
+        <article class="ref-row" data-reveal>
+          <div class="ref-cmd">clidev watch &lt;cmd&gt;<span class="sub">clidev notify</span></div>
+          <div class="ref-body">
+            <p>Spawns the command with inherited stdio, forwards signals to the whole process group, and reports success, failure and duration.</p>
+            <div class="flags"><span class="flag">--title</span><span class="flag">--sound</span><span class="flag">--no-bell</span><span class="flag">--only-fail</span><span class="flag">--quiet</span><span class="flag">--json</span></div>
+          </div>
+          <button type="button" class="copy-mini" data-copy="clidev watch &quot;npm run build&quot;">copy</button>
+        </article>
+
+        <article class="ref-row" data-reveal>
+          <div class="ref-cmd">clidev hooks<span class="sub">Stop + Notification · Claude Code</span></div>
+          <div class="ref-body">
+            <p>Injects the two hooks that matter, backs the file up, and refuses to touch JSON it cannot parse. Re-running is a no-op, not a duplicate.</p>
+            <div class="flags"><span class="flag">--claude</span><span class="flag">--dry-run</span><span class="flag">--remove</span><span class="flag">--no-backup</span><span class="flag">--command</span></div>
+          </div>
+          <button type="button" class="copy-mini" data-copy="clidev hooks --claude">copy</button>
+        </article>
+
+        <article class="ref-row" data-reveal>
+          <div class="ref-cmd">clidev clean<span class="sub">stdin or --file</span></div>
+          <div class="ref-body">
+            <p>Pipe filter for logs you are about to paste. ANSI out, secrets masked, stack frames folded, cleaned text on stdout and the clipboard.</p>
+            <div class="flags"><span class="flag">--file</span><span class="flag">--no-copy</span><span class="flag">--keep-frames</span><span class="flag">--keep-duplicates</span><span class="flag">--json</span></div>
+          </div>
+          <button type="button" class="copy-mini" data-copy="npm run build 2&gt;&amp;1 | clidev clean">copy</button>
+        </article>
+
+        <article class="ref-row" data-reveal>
+          <div class="ref-cmd">clidev pack [globs…]<span class="sub">git-changed → src/**/*</span></div>
+          <div class="ref-body">
+            <p>One markdown bundle with a tree, language fences and a token estimate. Binary files, lockfiles and <code>node_modules</code> never make it in.</p>
+            <div class="flags"><span class="flag">--all</span><span class="flag">--print</span><span class="flag">--out</span><span class="flag">--no-copy</span><span class="flag">--max-bytes</span><span class="flag">--max-tokens</span><span class="flag">--json</span></div>
+          </div>
+          <button type="button" class="copy-mini" data-copy="clidev pack &quot;src/**/*.ts&quot;">copy</button>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="clean">
+    <div class="wrap">
+      <div class="section-head" data-reveal>
+        <span class="index">03</span>
+        <h2>Paste the error, not the mess</h2>
+        <p>One pipe. The log loses its escape codes and framework noise, and every key-shaped string is masked before it reaches a model.</p>
+      </div>
+
+      <div class="diff">
+        <div class="diff-panel" data-reveal>
+          <header><span>before · npm run dev</span><span>raw</span></header>
+          <pre><span class="gone">[31m</span><span class="bad">✖ TypeError: Cannot read properties of undefined (reading 'env')</span><span class="gone">[0m</span>
+    at resolveConfig (/app/node_modules/vite/dist/node/chunks/dep-9a4c6e.js:1180:22)
+    at ... 36 more node_modules frames
+    at Object.configResolved (/app/src/config.ts:42:11)
+<span class="bad">OPENAI_API_KEY=sk-proj-demo-value</span>
+<span class="gone">[2K[1G</span>waiting for file changes…
+<span class="gone">[2K[1G</span>waiting for file changes…
+<span class="gone">[2K[1G</span>waiting for file changes…</pre>
+        </div>
+        <div class="diff-panel after" data-reveal>
+          <header><span>after · clidev clean</span><span>clipboard</span></header>
+          <pre>✖ TypeError: Cannot read properties of undefined (reading 'env')
+    at Object.configResolved (/app/src/config.ts:42:11)
+    at … (37 internal frames hidden)
+<span class="good">OPENAI_API_KEY=[REDACTED_SECRET]</span>
+waiting for file changes…
+    … repeated 2 more times
+<span class="good">✔ 18,204 → 2,931 chars · ~3,818 tokens saved (84%)</span>
+<span class="good">   cleaned text copied to clipboard</span></pre>
+        </div>
+      </div>
+
+      <div class="diff-stats" data-reveal>
+        <span><b>84%</b> smaller</span>
+        <span><b>~3,818</b> tokens saved</span>
+        <span><b>37</b> frames folded</span>
+        <span><b>3</b> secrets masked</span>
+        <span><b>14</b> credential shapes covered</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="hooks">
+    <div class="wrap">
+      <div class="section-head" data-reveal>
+        <span class="index">04</span>
+        <h2>Your agents should tell you when they stop</h2>
+        <p>Not make you check. clidev installs the two lifecycle hooks that matter and leaves the rest of your config exactly as it found it.</p>
+      </div>
+
+      <div class="split">
+        <div data-reveal>
+          <p style="font-size:1rem;color:var(--ink);font-weight:500">Stop and Notification, wired to <code style="color:var(--electric);font-size:.92em">clidev notify</code>.</p>
+          <p style="margin-top:.75rem;font-size:.94rem"><code>clidev hooks --claude</code> writes into <code>~/.claude/settings.json</code> (or <code>$CLAUDE_CONFIG_DIR</code>). The bell rings and a native toast appears the moment a task ends or waits for permission.</p>
+
+          <ul class="checklist">
+            <li><span><strong>Atomic.</strong> Temp file, then rename. A crash can't leave you with half a config.</span></li>
+            <li><span><strong>Idempotent.</strong> Running it twice updates the command in place instead of duplicating the hook.</span></li>
+            <li><span><strong>Reversible.</strong> <code>--remove</code> strips only clidev entries and deletes the event if it becomes empty.</span></li>
+            <li><span><strong>Portable.</strong> Falls back to <code>node &lt;abs&gt;/dist/index.js</code> when clidev isn't on PATH.</span></li>
+          </ul>
+
+          <p style="margin-top:1.75rem;font-family:var(--mono);font-size:11.5px;color:var(--muted);line-height:1.9">Antigravity, OpenCode, Aider:<br>clidev watch "opencode" --title OpenCode</p>
+        </div>
+
+        <div class="code-block" data-reveal>
+          <header><span>~/.claude/settings.json</span><span>after --claude</span></header>
+          <pre>{
+  <span class="k">"hooks"</span>: {
+    <span class="k">"Stop"</span>: [{
+      <span class="k">"hooks"</span>: [{
+        <span class="k">"type"</span>: <span class="s">"command"</span>,
+        <span class="k">"command"</span>: <span class="s">"clidev notify --title \"Claude Code\""</span>,
+        <span class="k">"timeout"</span>: 10
+      }]
+    }],
+    <span class="k">"Notification"</span>: [{
+      <span class="k">"hooks"</span>: [{
+        <span class="k">"type"</span>: <span class="s">"command"</span>,
+        <span class="k">"command"</span>: <span class="s">"clidev notify --title \"Claude Code\""</span>,
+        <span class="k">"timeout"</span>: 10
+      }]
+    }]
+  }
+}</pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="install">
+    <div class="wrap">
+      <div class="section-head" data-reveal>
+        <span class="index">05</span>
+        <h2>Three commands, nothing to configure</h2>
+        <p>No daemon, no account, no background service. Build it once, link the two binaries, and keep working in the shell you already have open.</p>
+      </div>
+
+      <div class="steps">
+        <div class="step" data-reveal>
+          <h3>Clone and build</h3>
+          <pre>git clone &lt;repo&gt; clidev
+cd clidev
+npm install
+npm run build</pre>
+        </div>
+        <div class="step" data-reveal>
+          <h3>Link the binaries</h3>
+          <pre>npm link
+
+clidev --version
+clp --help</pre>
+        </div>
+        <div class="step" data-reveal>
+          <h3>Wire your agent</h3>
+          <pre>clidev hooks --claude
+clidev watch "npm run build"</pre>
+        </div>
+      </div>
+
+      <div class="platform" data-reveal>
+        <table>
+          <caption class="mono-label" style="text-align:left;padding:.75rem .9rem 0">Platform coverage</caption>
+          <thead>
+            <tr><th scope="col">Command</th><th scope="col">Windows</th><th scope="col">macOS</th><th scope="col">Linux</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>paste</td><td>PowerShell STA + .NET</td><td>pngpaste / osascript / sips</td><td>wl-paste or xclip</td></tr>
+            <tr><td>notify</td><td>node-notifier → PowerShell toast</td><td>node-notifier → osascript</td><td>notify-send</td></tr>
+            <tr><td>hooks</td><td class="yes">yes</td><td class="yes">yes</td><td class="yes">yes</td></tr>
+            <tr><td>clean</td><td class="yes">yes</td><td class="yes">yes</td><td class="yes">yes</td></tr>
+            <tr><td>pack</td><td class="yes">yes</td><td class="yes">yes</td><td class="yes">yes</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer-grid">
+      <div>
+        <a class="brand" href="#top"><span class="mark">&gt;_</span> clidev</a>
+        <p>Five commands for the gaps terminal agents leave behind. Local-only, MIT, and specified by voice for the No Hands hackathon.</p>
+      </div>
+      <nav class="footer-links" aria-label="Footer">
+        <a href="#problems">Problems</a>
+        <a href="#commands">Commands</a>
+        <a href="#install">Install</a>
+        <a href="#top">Back to top</a>
+      </nav>
+    </div>
+    <div class="footer-bottom">
+      <span>No Hands: The Wispr Challenge · Builders track · 2026</span>
+      <span>Node ≥ 20.17 · MIT · 0 telemetry</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  var scenarios = {
+    paste: {
+      cmd: "clp",
+      lines: [
+        "::ok::✔ reading the clipboard done",
+        "~/.clidev/screenshots/shot_20261026-140122.png",
+        "::box::╭─ screenshot ready ────────────────────────────────────────────╮",
+        "::box::│ file       ~/.clidev/screenshots/shot_20261026-140122.png     │",
+        "::box::│ size       1.2 MB                                             │",
+        "::box::│ clipboard  absolute path                                      │",
+        "::box::│ next       Ctrl+V inside Claude Code, Antigravity or OpenCode │",
+        "::box::╰───────────────────────────────────────────────────────────────╯"
+      ]
+    },
+    watch: {
+      cmd: 'clidev watch "npm run build"',
+      lines: [
+        "::dim::> next build",
+        "::dim::✓ Compiled successfully in 6.4s",
+        "::ok::✔ npm run build finished in 6.8s",
+        "::dim::› notification delivered via node-notifier",
+        "::dim::  toast: clidev watch — npm run build finished in 6.8s (exit 0)"
+      ]
+    },
+    hooks: {
+      cmd: "clidev hooks --claude",
+      lines: [
+        "::ok::✔ Claude Code hooks are wired up",
+        "::box::╭─ hooks installed ─────────────────────────────────────────────╮",
+        "::box::│ file       ~/.claude/settings.json                             │",
+        "::box::│ Stop       added                                               │",
+        "::box::│ Notification added                                             │",
+        "::box::│ backup     ~/.claude/settings.json.bak-20261026-140133         │",
+        "::box::│ restart    reopen the Claude Code session to reload settings   │",
+        "::box::╰───────────────────────────────────────────────────────────────╯",
+        "::dim::› run clidev hooks --remove to undo, keeping your other hooks"
+      ]
+    },
+    clean: {
+      cmd: "npm run dev 2>&1 | clidev clean",
+      lines: [
+        "::err::✖ TypeError: Cannot read properties of undefined (reading 'env')",
+        "::dim::    at Object.configResolved (/app/src/config.ts:42:11)",
+        "::dim::    at … (37 internal frames hidden)",
+        "OPENAI_API_KEY=[REDACTED_SECRET]",
+        "waiting for file changes…",
+        "::dim::    … repeated 2 more times",
+        "::ok::✔ 18,204 → 2,931 chars · ~3,818 tokens saved (84%)",
+        "::box::╭─ clean complete ──────────────────────────────────────────────╮",
+        "::box::│ saved      15,273 chars (84%) · ~3,818 tokens                  │",
+        "::box::│ ansi       412 escape sequences stripped                       │",
+        "::box::│ secrets    3 redacted                                          │",
+        "::box::│ noise      37 stack frames · 12 repeats collapsed              │",
+        "::box::│ clipboard  cleaned text copied                                 │",
+        "::box::╰───────────────────────────────────────────────────────────────╯"
+      ]
+    },
+    pack: {
+      cmd: 'clidev pack "src/**/*"',
+      lines: [
+        "::ok::✔ 12 files · 1,842 lines · ~14,206 tokens",
+        "::dim::  tree + language fences + token estimate, in one markdown block",
+        "::box::╭─ context packed ──────────────────────────────────────────────╮",
+        "::box::│ files      12                                                  │",
+        "::box::│ size       64.2 KB                                             │",
+        "::box::│ tokens     ~14,206                                             │",
+        "::box::│ source     patterns                                            │",
+        "::box::│ clipboard  markdown bundle copied                              │",
+        "::box::╰───────────────────────────────────────────────────────────────╯",
+        "::dim::› paste it into Claude Code, Antigravity, OpenCode or Aider"
+      ]
+    }
+  };
+
+  var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var output = document.getElementById("term-output");
+  var terminal = document.querySelector(".terminal");
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('[role="tab"][data-scenario]'));
+  var replayButton = document.getElementById("term-replay");
+  var current = "paste";
+  var runToken = 0;
+
+  function wait(ms) {
+    return new Promise(function (resolve) { window.setTimeout(resolve, ms); });
+  }
+
+  function classFor(line) {
+    var match = /^::(ok|err|warn|dim|box)::/.exec(line);
+    return match ? match[1] : "";
+  }
+
+  function stripMarkers(line) {
+    return line.replace(/^::(ok|err|warn|dim|box)::/, "");
+  }
+
+  function appendLine(raw) {
+    var node = document.createElement("span");
+    node.className = "line " + classFor(raw);
+    node.textContent = stripMarkers(raw);
+    output.appendChild(node);
+    output.scrollTop = output.scrollHeight;
+  }
+
+  function setActive(key) {
+    tabs.forEach(function (tab) {
+      var active = tab.getAttribute("data-scenario") === key;
+      tab.setAttribute("aria-selected", active ? "true" : "false");
+      tab.tabIndex = active ? 0 : -1;
+      if (active) output.setAttribute("aria-labelledby", tab.id);
+    });
+  }
+
+  async function play(key) {
+    var scenario = scenarios[key];
+    if (!scenario) return;
+
+    current = key;
+    setActive(key);
+    var token = ++runToken;
+    output.textContent = "";
+
+    var promptLine = document.createElement("div");
+    var prompt = document.createElement("span");
+    prompt.className = "prompt";
+    prompt.textContent = "$ ";
+    var command = document.createElement("span");
+    command.className = "cmd";
+    promptLine.appendChild(prompt);
+    promptLine.appendChild(command);
+    output.appendChild(promptLine);
+
+    if (reduceMotion) {
+      command.textContent = scenario.cmd;
+      scenario.lines.forEach(function (line) { appendLine(line); });
+      return;
+    }
+
+    for (var index = 0; index < scenario.cmd.length; index += 1) {
+      if (token !== runToken) return;
+      command.textContent += scenario.cmd.charAt(index);
+      await wait(16 + Math.random() * 24);
+    }
+
+    await wait(140);
+    for (var lineIndex = 0; lineIndex < scenario.lines.length; lineIndex += 1) {
+      if (token !== runToken) return;
+      appendLine(scenario.lines[lineIndex]);
+      await wait(48 + Math.random() * 42);
+    }
+  }
+
+  function markCopied(button) {
+    if (!button) return;
+    var original = button.getAttribute("data-label") || button.textContent;
+    button.setAttribute("data-label", original);
+    button.textContent = "copied";
+    button.classList.add("is-copied");
+    window.setTimeout(function () {
+      button.textContent = original;
+      button.classList.remove("is-copied");
+    }, 1500);
+  }
+
+  function legacyCopy(text) {
+    var area = document.createElement("textarea");
+    area.value = text;
+    area.setAttribute("readonly", "");
+    area.style.position = "fixed";
+    area.style.top = "-999px";
+    document.body.appendChild(area);
+    area.select();
+    var copied = false;
+    try {
+      copied = document.execCommand("copy");
+    } catch (error) {
+      copied = false;
+    }
+    document.body.removeChild(area);
+    return copied;
+  }
+
+  function copyText(text, button) {
+    if (!text) return;
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(
+        function () { markCopied(button); },
+        function () { if (legacyCopy(text)) markCopied(button); }
+      );
+      return;
+    }
+    if (legacyCopy(text)) markCopied(button);
+  }
+
+  document.addEventListener("click", function (event) {
+    var source = event.target instanceof Element ? event.target : null;
+    if (!source) return;
+
+    var copyButton = source.closest("[data-copy], [data-copy-target]");
+    if (copyButton) {
+      var targetId = copyButton.getAttribute("data-copy-target");
+      var target = targetId ? document.getElementById(targetId) : null;
+      var text = target ? target.textContent : copyButton.getAttribute("data-copy");
+      copyText((text || "").trim(), copyButton);
+      return;
+    }
+
+    var trigger = source.closest("[data-scenario]");
+    if (!trigger) return;
+    play(trigger.getAttribute("data-scenario"));
+    if (trigger.classList.contains("cmd-chip") && terminal) {
+      terminal.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
+    }
+  });
+
+  tabs.forEach(function (tab, index) {
+    tab.addEventListener("keydown", function (event) {
+      var next = null;
+      if (event.key === "ArrowRight") next = tabs[(index + 1) % tabs.length];
+      else if (event.key === "ArrowLeft") next = tabs[(index - 1 + tabs.length) % tabs.length];
+      else if (event.key === "Home") next = tabs[0];
+      else if (event.key === "End") next = tabs[tabs.length - 1];
+      if (!next) return;
+      event.preventDefault();
+      next.focus();
+      play(next.getAttribute("data-scenario"));
+    });
+  });
+
+  if (replayButton) {
+    replayButton.addEventListener("click", function () { play(current); });
+  }
+
+  var revealTargets = document.querySelectorAll("[data-reveal]");
+  if ("IntersectionObserver" in window && !reduceMotion) {
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        entry.target.classList.add("is-in");
+        observer.unobserve(entry.target);
+      });
+    }, { threshold: 0.12, rootMargin: "0px 0px -40px 0px" });
+    revealTargets.forEach(function (element) { observer.observe(element); });
+  } else {
+    revealTargets.forEach(function (element) { element.classList.add("is-in"); });
+  }
+
+  window.setTimeout(function () { play("paste"); }, reduceMotion ? 0 : 350);
+})();
+</script>
+</body>
+</html>
