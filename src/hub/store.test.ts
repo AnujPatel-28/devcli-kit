@@ -11,6 +11,14 @@ function clock(start = 1_000_000): { now: () => number; advance: (ms: number) =>
 
 const DONE = { agent: "claude", sessionId: "s1", kind: "done", cwd: "/work/shop-api", summary: "Added tests" } as const;
 
+test("an ask keeps the agent's full message, line breaks included", () => {
+  const store = new HubStore();
+  const message = "Done.\n\n- renamed page_size\n- **all** tests pass";
+  const { ask, session } = store.report({ ...DONE, summary: message });
+  assert.equal(ask?.summary, message);
+  assert.equal(session.summary, "Done. - renamed page_size - all tests pass");
+});
+
 test("a done event opens an ask and marks the session done", () => {
   const store = new HubStore();
   const { ask, session } = store.report(DONE);
@@ -126,4 +134,6 @@ test("helpers flatten summaries and name projects on any OS", () => {
   assert.equal(projectName(undefined), "unknown project");
   assert.equal(shortSummary("## Done\n\n**All** tests pass\n```ts\nx\n```"), "Done All tests pass [code]");
   assert.equal(shortSummary("a".repeat(20), 10).length, 10);
+  assert.equal(shortSummary("Renamed page_size in __init__ and *args"), "Renamed page_size in __init__ and *args");
+  assert.equal(shortSummary("> note\n# Title"), "note Title");
 });

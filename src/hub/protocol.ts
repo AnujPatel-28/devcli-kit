@@ -112,12 +112,26 @@ export function countWords(text: string | undefined): number {
   return text.split(/\s+/u).filter((word) => word.length > 0).length;
 }
 
-/** One readable paragraph for a toast or a card, never a wall of markdown. */
+/** Longest agent message the inbox keeps; the card shows all of it. */
+export const MAX_MESSAGE_CHARS = 8_000;
+
+export function clampText(text: string | undefined, max = MAX_MESSAGE_CHARS): string {
+  if (text === undefined) return "";
+  const trimmed = text.trim();
+  return trimmed.length <= max ? trimmed : `${trimmed.slice(0, max - 1).trimEnd()}…`;
+}
+
+/**
+ * One readable line for a toast or a session row. Only markdown syntax is
+ * removed (fences, heading and quote markers, bold, backticks), never the
+ * underscores and asterisks inside identifiers like `page_size`.
+ */
 export function shortSummary(text: string | undefined, max = 280): string {
   if (text === undefined) return "";
   const flat = text
     .replace(/```[\s\S]*?```/gu, " [code] ")
-    .replace(/[#*_`>]+/gu, "")
+    .replace(/^\s{0,3}(?:#{1,6}|>)\s+/gmu, "")
+    .replace(/\*\*|`/gu, "")
     .replace(/\s+/gu, " ")
     .trim();
   return flat.length <= max ? flat : `${flat.slice(0, max - 1).trimEnd()}…`;

@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import {
   ASK_KINDS,
+  clampText,
   computeStats,
   countWords,
   projectName,
@@ -104,7 +105,7 @@ export class HubStore {
       sessionId: event.sessionId,
       kind: event.kind as AskKind,
       project: session.project,
-      summary: shortSummary(event.summary, 600),
+      summary: clampText(event.summary),
       canReply: event.canReply !== false,
       createdAt: at,
       status: "open",
