@@ -1,9 +1,10 @@
-import { copyFile, mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
 import { Command } from "commander";
 
+import { opencodePluginPath, renderOpencodePlugin } from "../adapters/opencode.js";
 import {
   mergeClaudeHooks,
   notifyHookSpecs,
@@ -24,6 +25,70 @@ interface HooksOptions {
   backup?: boolean;
   command?: string;
   notifyOnly?: boolean;
+  opencode?: boolean;
+}
+
+const OPENCODE_MARKER = "clidev → OpenCode plugin";
+
+/** Absolute node + clidev script, so the plugin keeps working outside this shell. */
+function selfCommand(): string[] {
+  const script = process.argv[1];
+  return script === undefined ? ["clidev"] : [process.execPath, path.resolve(script)];
+}
+
+async function handleOpencode(options: HooksOptions): Promise<void> {
+  const pluginPath = opencodePluginPath();
+
+  if (options.remove === true) {
+    let existing: string;
+    try {
+      existing = await readFile(pluginPath, "utf8");
+    } catch {
+      warn(`no clidev plugin found at ${pluginPath}`);
+      return;
+    }
+    if (!existing.includes(OPENCODE_MARKER)) {
+      throw new CliError(`${pluginPath} was not written by clidev, so it was left alone.`);
+    }
+    if (options.dryRun === true) {
+      payload(`would delete ${pluginPath}`);
+      return;
+    }
+    await rm(pluginPath);
+    success("removed the clidev OpenCode plugin");
+    hint(pluginPath);
+    return;
+  }
+
+  const source = renderOpencodePlugin(selfCommand());
+  if (options.dryRun === true) {
+    payload(`// ${pluginPath}\n${source}`);
+    return;
+  }
+
+  try {
+    const existing = await readFile(pluginPath, "utf8");
+    if (!existing.includes(OPENCODE_MARKER)) {
+      throw new CliError(`${pluginPath} already exists and was not written by clidev.`, 1, [
+        "Rename or remove that file, then run this again.",
+      ]);
+    }
+  } catch (error) {
+    if (error instanceof CliError) throw error;
+  }
+
+  await mkdir(path.dirname(pluginPath), { recursive: true });
+  const temporaryPath = `${pluginPath}.tmp-${process.pid}`;
+  await writeFile(temporaryPath, source, "utf8");
+  await rename(temporaryPath, pluginPath);
+
+  success("OpenCode now reports to the clidev inbox");
+  box("plugin installed", [
+    ["file", pluginPath],
+    ["events", "finished, permission, question; answered in the TUI closes the card"],
+    ["restart", "restart OpenCode to load the plugin"],
+  ]);
+  hint("open the inbox with `clidev inbox`; OpenCode's own prompts stay live, answer in either place");
 }
 
 function claudeSettingsPath(): string {
@@ -88,7 +153,7 @@ async function writeSettings(
 function printIntegrationGuide(): void {
   note("Wire the same alerts into every other agent", [
     "Antigravity CLI   clidev watch \"agy --print 'fix the failing tests'\" --title Antigravity",
-    'OpenCode          clidev watch "opencode" --title OpenCode',
+    "OpenCode          clidev hooks --opencode   (full inbox replies)",
     "Aider             clidev watch \"aider --message 'refactor auth'\" --title Aider",
     'Any long build    clidev watch "npm run build" --sound',
     "",
@@ -102,6 +167,7 @@ export function createHooksCommand(): Command {
     .description("Install lifecycle notification hooks into your AI CLI tools")
     .option("--claude", "wire Claude Code into the clidev inbox (~/.claude/settings.json)")
     .option("--notify-only", "only show a toast when Claude stops or waits; no replies")
+    .option("--opencode", "install the clidev plugin into OpenCode (~/.config/opencode/plugins)")
     .option("--remove", "remove clidev hooks instead of installing them")
     .option("--dry-run", "print the resulting settings.json without writing it")
     .option("--no-backup", "skip the timestamped settings.json backup")
@@ -112,6 +178,8 @@ export function createHooksCommand(): Command {
 Examples:
   $ clidev hooks --claude                  answer Claude from the inbox, by voice
   $ clidev hooks --claude --notify-only    just a toast when it stops or waits
+  $ clidev hooks --opencode                answer OpenCode from the same inbox
+  $ clidev hooks --opencode --remove       uninstall the OpenCode plugin
   $ clidev hooks --claude --dry-run        inspect the JSON first
   $ clidev hooks --claude --remove         undo, keeping your other hooks
   $ clidev hooks                           show wiring guides for other agents
@@ -120,6 +188,10 @@ Writes are atomic, idempotent, and never touch an invalid settings.json.`,
     )
     .action(async (options: HooksOptions) => {
       setMachineOutput(options.dryRun === true);
+      if (options.opencode === true) {
+        await handleOpencode(options);
+        if (options.claude !== true) return;
+      }
       const bin = options.command?.trim() ?? "";
       const executable = bin.length > 0 ? bin : resolveCliInvocation();
       const specs =
@@ -155,7 +227,7 @@ Writes are atomic, idempotent, and never touch an invalid settings.json.`,
 
       if (options.claude !== true) {
         printIntegrationGuide();
-        hint("run `clidev hooks --claude` to install the Claude Code hooks automatically");
+        hint("run `clidev hooks --claude` or `clidev hooks --opencode` to wire an agent into the inbox");
         return;
       }
 

@@ -85,10 +85,11 @@ clidev --help
 
 ```bash
 clidev hooks --claude     # once: Claude Code now reports to the clidev hub
+clidev hooks --opencode   # once: so does OpenCode (installs a plugin)
 clidev inbox              # open the inbox (the hub starts by itself)
 ```
 
-Start Claude Code, hand it a task, and switch to something else. When it needs you:
+Start Claude Code or OpenCode, hand it a task, and switch to something else. When it needs you:
 
 1. **Claude finishes** → a toast shows what it did. In the inbox, hold your Wispr Flow key, say what to do next, press `Ctrl+Enter`. Claude keeps working with your words as its next instruction.
 2. **Claude asks for permission** → the inbox shows the exact command. Press **Allow**, or say *"no, use npm run clean"* and press **Deny**: Claude reads your reason and adjusts.
@@ -113,7 +114,20 @@ clidev hub --stop                     # stop the background hub
 
 Privacy: the hub listens on `127.0.0.1` only, every API call needs a random token stored in `~/.clidev/hub/token`, and requests with any other `Host` header are refused, so websites in your browser cannot reach it. Nothing leaves your machine.
 
-Other agents: OpenCode and Antigravity CLI adapters are next; until then use `clidev watch`.
+### OpenCode
+
+`clidev hooks --opencode` writes one plugin file to `~/.config/opencode/plugins/clidev.js` (respecting `XDG_CONFIG_HOME` and `OPENCODE_CONFIG_DIR`); restart OpenCode to load it. Written against OpenCode 1.19.4.
+
+| OpenCode event | Inbox card | Your reply goes back through |
+|---|---|---|
+| `session.idle` | Finished, with its last message | `POST /session/{id}/prompt_async` |
+| `permission.asked` | Permission, with the exact command or files | `POST /permission/{id}/reply` (`once`, or `reject` with your words) |
+| `question.asked` | Question, with its options | `POST /question/{id}/reply` (a spoken answer that names an option picks it) |
+| `*.replied`, or busy again | closes the card | — |
+
+OpenCode's own prompts stay live in the TUI, so you can answer in either place; whichever comes first wins and the other closes. Subagent sessions are ignored. `clidev hooks --opencode --remove` deletes the plugin.
+
+Other agents: the Antigravity CLI adapter is next; until then use `clidev watch`.
 
 ## 1. `clidev bridge` — install-once clipboard companion (Windows preview)
 
@@ -361,7 +375,8 @@ src/
 ├── cli.ts                commander program, argv aliasing, EPIPE-safe errors
 ├── version.ts            version injected by tsup `define`
 ├── adapters/
-│   └── claude.ts         Claude Code hook payload <-> hub event / reply JSON
+│   ├── claude.ts         Claude Code hook payload <-> hub event / reply JSON
+│   └── opencode.ts       OpenCode event <-> hub event / API action, plus the plugin file
 ├── hub/
 │   ├── protocol.ts       event, ask, reply and stats types shared by every adapter
 │   ├── store.ts          pure session + ask state, waiters, history
